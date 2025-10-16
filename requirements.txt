@@ -1,0 +1,12 @@
+# Core dependencies for Panorama Tools
+rumps==0.4.0
+requests>=2.31.0
+urllib3>=2.0.0
+keyring>=24.0.0
+pyobjc-framework-Cocoa>=9.0
+
+# Build dependencies (for creating .app)
+py2app>=0.28.0
+
+# Optional: For better SSL certificate handling
+certifi>=2023.0.0
