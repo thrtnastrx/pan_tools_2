@@ -21,6 +21,7 @@ from AppKit import NSAlert, NSImage, NSApplicationActivateIgnoringOtherApps
 from Foundation import NSURL
 import objc
 from urllib3.exceptions import InsecureRequestWarning, NotOpenSSLWarning
+warnings.simplefilter("ignore", InsecureRequestWarning)
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import time
@@ -97,7 +98,7 @@ class PanoramaSyncMonitor(rumps.App):
         self.username = None
         self.password = None
         self.api_key = None
-        self.verify_ssl = True  # Default to secure
+        self.verify_ssl = False  # Default to INSECURE (user request); re-enable in SSL Settings
         self.custom_ca_path = None
         self._override_cache = {}
         self._fw_items = {}
@@ -216,16 +217,18 @@ class PanoramaSyncMonitor(rumps.App):
             self.log(f"Cannot set permissions on {filepath}: {e}")
 
     def _make_request(self, url, timeout=10):
-        """Centralized request method with proper SSL handling"""
+        """Centralized request with SSL handling.
+
+        If verify_ssl is False, silently allow insecure requests (no popup)."""
         verify = self.verify_ssl
         if self.custom_ca_path and os.path.exists(self.custom_ca_path):
             verify = self.custom_ca_path
-        
+        if verify is False:
+            return self._http.get(url, verify=False, timeout=timeout)
         try:
             return self._http.get(url, verify=verify, timeout=timeout)
         except requests.exceptions.SSLError as e:
             self.log(f"SSL Error: {e}")
-            # Prompt user about SSL issues
             response = rumps.alert(
                 title="SSL Certificate Error",
                 message="Cannot verify SSL certificate. Allow insecure connection this time?",
@@ -235,7 +238,6 @@ class PanoramaSyncMonitor(rumps.App):
             if response == 1:
                 return self._http.get(url, verify=False, timeout=timeout)
             raise
-
     def configure_ssl(self, _):
         """Configure SSL verification settings"""
         current = "Enabled" if self.verify_ssl else "Disabled"
@@ -261,7 +263,7 @@ class PanoramaSyncMonitor(rumps.App):
         resp = alert.runModal()
         
         if resp == 1000:  # Enable
-            self.verify_ssl = True
+            self.verify_ssl = False  # Default to INSECURE (user request); re-enable in SSL Settings
             self.custom_ca_path = None
             rumps.alert("SSL verification enabled.")
         elif resp == 1001:  # Disable
@@ -281,7 +283,7 @@ class PanoramaSyncMonitor(rumps.App):
                 path = result.text.strip()
                 if os.path.exists(path):
                     self.custom_ca_path = path
-                    self.verify_ssl = True
+                    self.verify_ssl = False  # Default to INSECURE (user request); re-enable in SSL Settings
                     rumps.alert(f"Custom CA set: {path}")
                 else:
                     rumps.alert("File not found. SSL settings unchanged.")
@@ -1167,7 +1169,11 @@ class PanoramaSyncMonitor(rumps.App):
 
     def _run_custom_command(self, serial: str, label: str, cmd: str):
         try:
-            self._execute_cli_command(serial, cmd, popup_title=f"Custom: {label}")
+            if isinstance(cmd, str) and cmd.strip().lower().startswith("test "):
+                # Route all test commands through op XML path
+                self._execute_test_command(serial, cmd, popup_title=f"Custom Test: {label}")
+            else:
+                self._execute_cli_command(serial, cmd, popup_title=f"Custom: {label}")
         except Exception as e:
             self._show_monospaced_alert("Custom Command Error", f"{label}: {e}")
 
@@ -1610,6 +1616,59 @@ class PanoramaSyncMonitor(rumps.App):
         human = self._humanize_ipsec_summary(xml, only_tunnel="prisma-tunnel") or self._humanize_generic_xml(xml)
         self._show_tabbed_alert("Prisma IPsec Tunnel", [("Raw", raw), ("Human Readable", human)], width=1000, height=500)
 
+    def _xml_for_test_cli(self, cli: str) -> Optional[str]:
+        """Convert a simple 'test' CLI string into a PAN-OS XML op command."""
+        try:
+            if not cli:
+                return None
+            import re as _re
+            s = cli.strip()
+            low = _re.sub(r"\s+", " ", s.lower())
+            if low.startswith("test vpn ike-sa"):
+                m = _re.search(r"(?:gateway|gw)\s+(.+)$", s, flags=_re.IGNORECASE)
+                if m:
+                    gw = m.group(1).strip().strip('"')
+                    return f"<test><vpn><ike-sa><gateway>{gw}</gateway></ike-sa></vpn></test>"
+                return "<test><vpn><ike-sa/></vpn></test>"
+            if low.startswith("test vpn ipsec-sa"):
+                m = _re.search(r"(?:tunnel|tnl)\s+(.+)$", s, flags=_re.IGNORECASE)
+                if m:
+                    tn = m.group(1).strip().strip('"')
+                    return f"<test><vpn><ipsec-sa><tunnel>{tn}</tunnel></ipsec-sa></vpn></test>"
+                return "<test><vpn><ipsec-sa/></vpn></test>"
+            return None
+        except Exception:
+            return None
+
+    def _execute_test_command(self, serial: str, cli: str, popup_title: Optional[str] = None):
+        """Execute a 'test ...' op command by converting to XML and using run_op_cmd, then show Raw/Human tabs."""
+        try:
+            xml_cmd = self._xml_for_test_cli(cli)
+            if not xml_cmd:
+                self._show_monospaced_alert("Unsupported Test Command", f"Could not parse test command:\n{cli}")
+                return
+            xml = self.run_op_cmd(serial, xml_cmd)
+            raw = self._pretty_xml(xml)
+            l = (cli or "").lower()
+            if "ipsec-sa" in l:
+                human = self._humanize_ipsec_summary(xml) or self._humanize_generic_xml(xml)
+            elif "ike-sa" in l:
+                human = self._humanize_ike_summary(xml) or self._humanize_generic_xml(xml)
+            else:
+                human = self._humanize_generic_xml(xml)
+            self._show_tabbed_alert(popup_title or "Test Command", [("Raw", raw), ("Human Readable", human)], width=1000, height=500)
+        except Exception as e:
+            self._show_monospaced_alert("Test Command Error", f"{cli}: {e}")
+
+    def test_prisma_ike_gw(self, serial):
+        """Preset: test the 'prisma-ike-gw' IKE gateway."""
+        self._execute_test_command(serial, "test vpn ike-sa gateway prisma-ike-gw", popup_title="Test Prisma IKE GW")
+
+    def test_prisma_ipsec_tunnel(self, serial):
+        """Preset: test the 'prisma-tunnel' IPsec SA."""
+        self._execute_test_command(serial, "test vpn ipsec-sa tunnel prisma-tunnel", popup_title="Test Prisma IPSec tunnel")
+
+
     def fetch_firewalls(self, _):
         if not self.api_key or not self.panorama_url:
             rumps.alert("Please login first.")
@@ -1720,11 +1779,11 @@ class PanoramaSyncMonitor(rumps.App):
                 ))
                 skypath_menu.add(rumps.MenuItem(
                     "Test Prisma IKE GW",
-                    callback=lambda _, s=serial: self._vpn_stub("Test Prisma IKE GW", s)
+                    callback=lambda _, s=serial: self.test_prisma_ike_gw(s)
                 ))
                 skypath_menu.add(rumps.MenuItem(
                     "Test Prisma IPSec tunnel",
-                    callback=lambda _, s=serial: self._vpn_stub("Test Prisma IPSec tunnel", s)
+                    callback=lambda _, s=serial: self.test_prisma_ipsec_tunnel(s)
                 ))
                 item.add(skypath_menu)
                 self._fw_items[norm_serial] = item
@@ -1839,11 +1898,11 @@ class PanoramaSyncMonitor(rumps.App):
                 ))
                 skypath_menu.add(rumps.MenuItem(
                     "Test Prisma IKE GW",
-                    callback=lambda _, s=serial: self._vpn_stub("Test Prisma IKE GW", s)
+                    callback=lambda _, s=serial: self.test_prisma_ike_gw(s)
                 ))
                 skypath_menu.add(rumps.MenuItem(
                     "Test Prisma IPSec tunnel",
-                    callback=lambda _, s=serial: self._vpn_stub("Test Prisma IPSec tunnel", s)
+                    callback=lambda _, s=serial: self.test_prisma_ipsec_tunnel(s)
                 ))
                 item.add(skypath_menu)
                 self._fw_items[norm_serial] = item
