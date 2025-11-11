@@ -1751,41 +1751,6 @@ class PanoramaSyncMonitor(rumps.App):
                 custom_menu.add(rumps.MenuItem("Delete Custom Command", callback=self._delete_custom_command_ui))
                 item.add(custom_menu)
                 item.add(None)
-                skypath_menu = rumps.MenuItem("Skypath commands")
-                skypath_menu.add(rumps.MenuItem(
-                    "Show IKE GW",
-                    callback=lambda _, s=serial: self.show_ike_summary(s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Show IPSec tunnel",
-                    callback=lambda _, s=serial: self.show_ipsec_summary(s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Show Prisma IKE GW",
-                    callback=lambda _, s=serial: self.show_prisma_ike_gw(s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Show Prisma IPSec tunnel",
-                    callback=lambda _, s=serial: self.show_prisma_ipsec_tunnel(s)
-                ))
-                skypath_menu.add(None)
-                skypath_menu.add(rumps.MenuItem(
-                    "Clear Prisma IKE GW",
-                    callback=lambda _, s=serial: self._vpn_stub("Clear Prisma IKE GW", s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Clear Prisma IPSec tunnel",
-                    callback=lambda _, s=serial: self._vpn_stub("Clear Prisma IPSec tunnel", s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Test Prisma IKE GW",
-                    callback=lambda _, s=serial: self.test_prisma_ike_gw(s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Test Prisma IPSec tunnel",
-                    callback=lambda _, s=serial: self.test_prisma_ipsec_tunnel(s)
-                ))
-                item.add(skypath_menu)
                 self._fw_items[norm_serial] = item
                 self.firewalls_menu.add(item)
         except Exception as e:
@@ -1870,41 +1835,6 @@ class PanoramaSyncMonitor(rumps.App):
                 custom_menu.add(rumps.MenuItem("Delete Custom Command", callback=self._delete_custom_command_ui))
                 item.add(custom_menu)
                 item.add(None)
-                skypath_menu = rumps.MenuItem("Skypath commands")
-                skypath_menu.add(rumps.MenuItem(
-                    "Show IKE GW",
-                    callback=lambda _, s=serial: self.show_ike_summary(s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Show IPSec tunnel",
-                    callback=lambda _, s=serial: self.show_ipsec_summary(s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Show Prisma IKE GW",
-                    callback=lambda _, s=serial: self.show_prisma_ike_gw(s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Show Prisma IPSec tunnel",
-                    callback=lambda _, s=serial: self.show_prisma_ipsec_tunnel(s)
-                ))
-                skypath_menu.add(None)
-                skypath_menu.add(rumps.MenuItem(
-                    "Clear Prisma IKE GW",
-                    callback=lambda _, s=serial: self._vpn_stub("Clear Prisma IKE GW", s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Clear Prisma IPSec tunnel",
-                    callback=lambda _, s=serial: self._vpn_stub("Clear Prisma IPSec tunnel", s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Test Prisma IKE GW",
-                    callback=lambda _, s=serial: self.test_prisma_ike_gw(s)
-                ))
-                skypath_menu.add(rumps.MenuItem(
-                    "Test Prisma IPSec tunnel",
-                    callback=lambda _, s=serial: self.test_prisma_ipsec_tunnel(s)
-                ))
-                item.add(skypath_menu)
                 self._fw_items[norm_serial] = item
                 self.firewalls_menu.add(item)
         except Exception as e:
