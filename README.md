@@ -20,13 +20,13 @@ It provides a fast, secure, GUI-based interface for running operational commands
 - Fetch all or connected **firewalls**, **device groups**, and **templates**.
 - Quickly view system info or open firewalls in a browser.
 - Auto-fetch key data after login.
+- Uses Panorama as API proxy, no need to connect directly to any device.
 
 ### ⚙️ Operational Commands
 - Run any operational (`type=op`) commands directly from the UI.
 - Built-in summaries for:
   - IKE Gateways (`show vpn ike-sa summary`)
   - IPsec Tunnels (`show vpn ipsec-sa summary`)
-  - Prisma-specific gateways/tunnels
 - View results in a dual-tab **Raw XML / Human-Readable** popup.
 
 ### 🔬 VPN & IPSec Testing
