@@ -1,5 +1,9 @@
 # Panorama Tools v2.0 Secure
 
+<img width="858" height="338" alt="Image" src="https://github.com/user-attachments/assets/8165a78d-02c7-42a6-8128-50594482166b" />
+<img width="792" height="612" alt="Image" src="https://github.com/user-attachments/assets/b8b02581-b14c-4339-9b4f-2cd8d43856f2" />
+<img width="532" height="308" alt="Image" src="https://github.com/user-attachments/assets/38dce2dd-aa2e-4371-ba05-be92ecce6ab5" />
+
 **Panorama Tools v2.0 Secure** is a macOS menu-bar application for managing and monitoring **Palo Alto Networks Panorama** and its connected firewalls via the XML API.  
 It provides a fast, secure, GUI-based interface for running operational commands, detecting local overrides, testing VPN/IPSec tunnels, and automating configuration checks — all without needing to open the Panorama web interface or CLI.
 
